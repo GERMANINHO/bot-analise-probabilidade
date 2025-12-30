@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bot • Análise de Probabilidade (educacional)</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111824; --panel2:#0f1621;
+      --text:#e8eef7; --muted:#a9b5c6; --line:#223044;
+      --ok:#49d18a; --warn:#ffcc66; --bad:#ff6b6b;
+      --btn:#1f2a3a; --btn2:#22324a;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:var(--sans); background:var(--bg); color:var(--text)}
+    header{
+      padding:20px 16px; border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    }
+    header h1{margin:0 0 6px 0; font-size:18px}
+    header p{margin:0; color:var(--muted); font-size:13px; line-height:1.4}
+    .wrap{max-width:1100px; margin:0 auto; padding:16px}
+    .grid{display:grid; gap:12px}
+    @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
+    .card{
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:14px; padding:14px;
+    }
+    .card h2{margin:0 0 10px 0; font-size:14px; color:var(--text)}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .btn{
+      background:var(--btn); border:1px solid var(--line); color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600;
+    }
+    .btn:hover{background:var(--btn2)}
+    .btn:disabled{opacity:.55; cursor:not-allowed}
+    .file{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    input[type="file"]{color:var(--muted)}
+    textarea{
+      width:100%; min-height:220px; resize:vertical;
+      background:var(--panel2); border:1px solid var(--line);
+      border-radius:12px; padding:12px; color:var(--text);
+      font-family:var(--mono); font-size:12px; line-height:1.4;
+    }
+    .hint{color:var(--muted); font-size:12px}
+    .pill{display:inline-flex; gap:8px; align-items:center; padding:6px 10px;
+      border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.02);
+      color:var(--muted); font-size:12px;
+    }
+    .pill strong{color:var(--text)}
+    .kpis{display:grid; gap:10px; grid-template-columns: repeat(2, minmax(0,1fr));}
+    @media(min-width:980px){ .kpis{grid-template-columns: repeat(3, minmax(0,1fr));} }
+    .kpi{
+      border:1px solid var(--line); border-radius:12px; padding:10px;
+      background:rgba(255,255,255,.02);
+    }
+    .kpi .label{font-size:12px; color:var(--muted)}
+    .kpi .value{font-size:18px; margin-top:6px; font-weight:800}
+    .divider{height:1px; background:var(--line); margin:12px 0}
+    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; border:1px solid var(--line)}
+    th,td{padding:10px; text-align:left; font-size:12px; border-bottom:1px solid var(--line)}
+    th{background:rgba(255,255,255,.03); color:var(--muted); font-weight:700}
+    tr:last-child td{border-bottom:none}
+    .badge{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--line)}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+    .small{font-size:11px; color:var(--muted)}
+    .bars{display:grid; gap:8px}
+    .bar{
+      display:grid; grid-template-columns: 42px 1fr 60px; align-items:center; gap:10px;
+      font-family:var(--mono); font-size:12px; color:var(--muted)
+    }
+    .track{height:10px; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; overflow:hidden}
+    .fill{height:100%; width:0% ; background:rgba(255,255,255,.35)}
+    .muted{color:var(--muted)}
+    footer{padding:14px 16px; border-top:1px solid var(--line); color:var(--muted); font-size:12px}
+    code.inline{font-family:var(--mono); background:rgba(255,255,255,.04); border:1px solid var(--line); padding:2px 6px; border-radius:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Bot • Análise de Probabilidade (educacional)</h1>
+      <p>
+        Ferramenta <b>descritiva</b> para estudar aleatoriedade: frequências, pares, distribuição, qui-quadrado etc.
+        <span class="muted">Não prevê “próximo resultado”.</span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+      <h2>1) Entrada de dados</h2>
+
+      <div class="file">
+        <input id="file" type="file" accept=".csv,text/csv" />
+        <button class="btn" id="btnLoadSample">Colar exemplo</button>
+        <button class="btn" id="btnClear">Limpar</button>
+        <span class="pill"><strong>Formato:</strong> 6 números por linha (1–60) • separados por espaço, TAB ou vírgula</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <textarea id="raw" placeholder="Cole aqui (ex.: 4 5 30 33 41 52) ou importe um CSV exportado do Excel."></textarea>
+      <p class="hint">
+        Dica (Excel): <b>Salvar como</b> → <b>CSV (delimitado por vírgulas)</b>.  
+        Se seu CSV tiver colunas extras, mantenha as 6 primeiras colunas como os números do sorteio.
+      </p>
+
+      <div class="row">
+        <button class="btn" id="btnParse">Validar</button>
+        <button class="btn" id="btnAnalyze" disabled>Analisar</button>
+        <button class="btn" id="btnExport" disabled>Exportar relatório (JSON)</button>
+        <span id="status" class="badge">aguardando dados…</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Avisos de validação</h2>
+      <div id="warnings" class="small muted">Nenhum ainda.</div>
+    </section>
+
+    <aside class="card">
+      <h2>3) Resultados</h2>
+
+      <div class="kpis" id="kpis">
+        <div class="kpi"><div class="label">Sorteios válidos</div><div class="value" id="kpiDraws">—</div></div>
+        <div class="kpi"><div class="label">Total de dezenas</div><div class="value" id="kpiTotal">—</div></div>
+        <div class="kpi"><div class="label">Dezenas distintas</div><div class="value" id="kpiUnique">—</div></div>
+        <div class="kpi"><div class="label">Média da soma</div><div class="value" id="kpiSumAvg">—</div></div>
+        <div class="kpi"><div class="label">Min/Max soma</div><div class="value" id="kpiSumMinMax">—</div></div>
+        <div class="kpi"><div class="label">Qui-quadrado (uniformidade)</div><div class="value" id="kpiChi">—</div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Frequência • Top 10 dezenas</h2>
+      <div id="topNums"></div>
+
+      <div class="divider"></div>
+
+      <h2>Co-ocorrência • Top 10 pares</h2>
+      <div id="topPairs"></div>
+
+      <div class="divider"></div>
+
+      <h2>Distribuição de pares/ímpar (quantos pares por sorteio)</h2>
+      <div class="bars" id="parityBars"></div>
+
+      <div class="divider"></div>
+
+      <p class="small muted">
+        Observação técnica: em uma loteria justa, cada sorteio é modelado como amostragem aleatória;
+        análises aqui servem para <b>estudo</b> e <b>auditoria estatística</b>, não para previsão determinística.
+      </p>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Projeto educacional • Dados ficam no seu navegador • Recomendado: publicar via GitHub Pages (Settings → Pages → Deploy from branch → <code class="inline">main</code> / <code class="inline">root</code>).
+    </div>
+  </footer>
+
+  <script>
+    "use strict";
+
+    const MAX_NUM = 60;
+    const DRAW_SIZE = 6;
+
+    const elFile = document.getElementById("file");
+    const elRaw = document.getElementById("raw");
+    const elWarnings = document.getElementById("warnings");
+    const elStatus = document.getElementById("status");
+
+    const btnParse = document.getElementById("btnParse");
+    const btnAnalyze = document.getElementById("btnAnalyze");
+    const btnExport = document.getElementById("btnExport");
+    const btnClear = document.getElementById("btnClear");
+    const btnLoadSample = document.getElementById("btnLoadSample");
+
+    const kpiDraws = document.getElementById("kpiDraws");
+    const kpiTotal = document.getElementById("kpiTotal");
+    const kpiUnique = document.getElementById("kpiUnique");
+    const kpiSumAvg = document.getElementById("kpiSumAvg");
+    const kpiSumMinMax = document.getElementById("kpiSumMinMax");
+    const kpiChi = document.getElementById("kpiChi");
+
+    const topNums = document.getElementById("topNums");
+    const topPairs = document.getElementById("topPairs");
+    const parityBars = document.getElementById("parityBars");
+
+    let parsed = {
+      draws: [],     // array de arrays (6 ints)
+      errors: [],    // mensagens
+      warnings: []   // mensagens
+    };
+
+    let lastReport = null;
+
+    function setBadge(type, text){
+      elStatus.className = "badge " + (type || "");
+      elStatus.textContent = text;
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function parseLines(text){
+      const lines = text
+        .replaceAll("\r\n","\n")
+        .replaceAll("\r","\n")
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      const draws = [];
+      const errors = [];
+      const warnings = [];
+
+      for(let i=0; i<lines.length; i++){
+        const line = lines[i];
+
+        // Aceita: tabs, espaços, vírgulas, ponto e vírgula
+        const parts = line.split(/[\s,;]+/).filter(Boolean);
+
+        // Alguns CSVs podem vir com mais colunas; pegamos as 6 primeiras
+        if(parts.length < DRAW_SIZE){
+          errors.push(`Linha ${i+1}: esperado ${DRAW_SIZE} números, veio ${parts.length}. Conteúdo: "${line}"`);
+          continue;
+        }
+
+        const nums = parts.slice(0, DRAW_SIZE).map(x => Number.parseInt(x, 10));
+
+        if(nums.some(n => !Number.isFinite(n))){
+          errors.push(`Linha ${i+1}: contém valor não-numérico. Conteúdo: "${line}"`);
+          continue;
+        }
+
+        // Valida intervalo
+        const outOfRange = nums.filter(n => n < 1 || n > MAX_NUM);
+        if(outOfRange.length){
+          errors.push(`Linha ${i+1}: número fora do intervalo 1–${MAX_NUM}: ${outOfRange.join(", ")}. Conteúdo: "${line}"`);
+          continue;
+        }
+
+        // Valida repetição
+        const set = new Set(nums);
+        if(set.size !== nums.length){
+          errors.push(`Linha ${i+1}: há números repetidos dentro do sorteio. Conteúdo: "${line}"`);
+          continue;
+        }
+
+        // Se a linha tem mais colunas, avisamos
+        if(parts.length > DRAW_SIZE){
+          warnings.push(`Linha ${i+1}: tinha ${parts.length} colunas; usei somente as ${DRAW_SIZE} primeiras.`);
+        }
+
+        // Ordena (opcional, ajuda em pares)
+        nums.sort((a,b)=>a-b);
+        draws.push(nums);
+      }
+
+      return { draws, errors, warnings, totalLines: lines.length };
+    }
+
+    function analyze(draws){
+      const N = draws.length;
+      const totalNumbers = N * DRAW_SIZE;
+
+      const freq = Array(MAX_NUM + 1).fill(0);
+      const uniqueSet = new Set();
+      const sums = [];
+      const evenCountDist = Array(DRAW_SIZE + 1).fill(0); // 0..6 pares
+
+      // pares
+      const pairMap = new Map(); // "a-b" -> count
+
+      for(const d of draws){
+        let evens = 0;
+        let sum = 0;
+
+        for(const n of d){
+          freq[n] += 1;
+          uniqueSet.add(n);
+          sum += n;
+          if(n % 2 === 0) evens++;
+        }
+
+        sums.push(sum);
+        evenCountDist[evens] += 1;
+
+        // combinações de pares
+        for(let i=0; i<d.length; i++){
+          for(let j=i+1; j<d.length; j++){
+            const a = d[i], b = d[j];
+            const key = `${a}-${b}`;
+            pairMap.set(key, (pairMap.get(key) || 0) + 1);
+          }
+        }
+      }
+
+      // estatísticas de soma
+      const sumMin = Math.min(...sums);
+      const sumMax = Math.max(...sums);
+      const sumAvg = sums.reduce((acc,v)=>acc+v,0) / (sums.length || 1);
+
+      // qui-quadrado simples vs uniforme (aprox)
+      // Esperado por número = totalNumbers / 60
+      const expected = totalNumbers / MAX_NUM;
+      let chi2 = 0;
+      for(let n=1; n<=MAX_NUM; n++){
+        const obs = freq[n];
+        const diff = obs - expected;
+        chi2 += (diff * diff) / (expected || 1);
+      }
+
+      // Top 10 números
+      const topNumbers = [];
+      for(let n=1; n<=MAX_NUM; n++){
+        topNumbers.push({
+          n,
+          count: freq[n],
+          p_emp: totalNumbers ? (freq[n] / totalNumbers) : 0,
+          exp: expected
+        });
+      }
+      topNumbers.sort((a,b)=> b.count - a.count);
+
+      // Top 10 pares
+      const pairArr = Array.from(pairMap.entries()).map(([key,count])=>{
+        const [a,b] = key.split("-").map(x=>parseInt(x,10));
+        return { a, b, key, count };
+      });
+      pairArr.sort((x,y)=> y.count - x.count);
+
+      return {
+        meta: {
+          draws: N,
+          totalNumbers,
+          uniqueNumbers: uniqueSet.size,
+          drawSize: DRAW_SIZE,
+          maxNum: MAX_NUM
+        },
+        freq,
+        topNumbers: topNumbers.slice(0, 10),
+        topPairs: pairArr.slice(0, 10),
+        sums: { min: sumMin, max: sumMax, avg: sumAvg },
+        parity: { evenCountDist }, // índice = qtde de pares
+        chiSquare: { value: chi2, expectedPerNumber: expected, df: MAX_NUM - 1 }
+      };
+    }
+
+    function renderTableNumbers(items, totalNumbers){
+      let html = `<table>
+        <thead><tr>
+          <th>Dezena</th><th>Ocorrências</th><th>Prob. empírica</th><th>Esperado</th>
+        </tr></thead><tbody>`;
+      for(const it of items){
+        html += `<tr>
+          <td><span class="badge">${it.n}</span></td>
+          <td>${it.count}</td>
+          <td>${(it.p_emp*100).toFixed(2)}%</td>
+          <td>${it.exp.toFixed(2)}</td>
+        </tr>`;
+      }
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function renderTablePairs(items){
+      let html = `<table>
+        <thead><tr>
+          <th>Par</th><th>Co-ocorrências</th>
+        </tr></thead><tbody>`;
+      for(const it of items){
+        html += `<tr>
+          <td><span class="badge">${it.a}-${it.b}</span></td>
+          <td>${it.count}</td>
+        </tr>`;
+      }
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function renderParityBars(dist){
+      const total = dist.reduce((a,b)=>a+b,0) || 1;
+      let html = "";
+      for(let ev=0; ev<dist.length; ev++){
+        const c = dist[ev];
+        const pct = (c/total)*100;
+        html += `<div class="bar">
+          <div>${ev}P</div>
+          <div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
+          <div>${pct.toFixed(1)}%</div>
+        </div>`;
+      }
+      return html;
+    }
+
+    function showWarnings(errors, warnings, totalLines, validCount){
+      if(errors.length === 0 && warnings.length === 0){
+        elWarnings.innerHTML = `<span class="ok">OK.</span> ${validCount} sorteios válidos de ${totalLines} linhas.`;
+        return;
+      }
+      let html = `<div><span class="${errors.length? "bad":"ok"}">${errors.length} erro(s)</span> • <span class="${warnings.length? "warn":"ok"}">${warnings.length} aviso(s)</span></div>`;
+      if(errors.length){
+        html += `<div class="divider"></div><div class="bad"><b>Erros (linhas ignoradas):</b></div><ul>`;
+        for(const m of errors.slice(0, 20)){
+          html += `<li>${escapeHtml(m)}</li>`;
+        }
+        if(errors.length > 20) html += `<li>… +${errors.length-20} erro(s)</li>`;
+        html += `</ul>`;
+      }
+      if(warnings.length){
+        html += `<div class="divider"></div><div class="warn"><b>Avisos:</b></div><ul>`;
+        for(const m of warnings.slice(0, 20)){
+          html += `<li>${escapeHtml(m)}</li>`;
+        }
+        if(warnings.length > 20) html += `<li>… +${warnings.length-20} aviso(s)</li>`;
+        html += `</ul>`;
+      }
+      elWarnings.innerHTML = html;
+    }
+
+    function resetUI(){
+      kpiDraws.textContent = "—";
+      kpiTotal.textContent = "—";
+      kpiUnique.textContent = "—";
+      kpiSumAvg.textContent = "—";
+      kpiSumMinMax.textContent = "—";
+      kpiChi.textContent = "—";
+      topNums.innerHTML = "";
+      topPairs.innerHTML = "";
+      parityBars.innerHTML = "";
+      btnAnalyze.disabled = true;
+      btnExport.disabled = true;
+      lastReport = null;
+    }
+
+    function toJSONDownload(obj, filename){
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // CSV loader (simples). Se quiser XLSX depois, a gente adiciona SheetJS.
+    elFile.addEventListener("change", async (e)=>{
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+
+      const text = await file.text();
+      elRaw.value = text;
+      setBadge("", "arquivo carregado. clique em Validar.");
+      resetUI();
+    });
+
+    btnClear.addEventListener("click", ()=>{
+      elRaw.value = "";
+      elFile.value = "";
+      parsed = {draws:[], errors:[], warnings:[]};
+      setBadge("", "aguardando dados…");
+      elWarnings.textContent = "Nenhum ainda.";
+      resetUI();
+    });
+
+    btnLoadSample.addEventListener("click", ()=>{
+      elRaw.value =
+`4 5 30 33 41 52
+9 37 39 41 43 49
+10 11 29 30 36 47
+1 5 6 27 42 59
+1 2 6 16 19 46`;
+      elFile.value = "";
+      setBadge("", "exemplo colado. clique em Validar.");
+      resetUI();
+    });
+
+    btnParse.addEventListener("click", ()=>{
+      resetUI();
+      const txt = elRaw.value || "";
+      if(!txt.trim()){
+        parsed = {draws:[], errors:["Nenhum dado informado."], warnings:[]};
+        showWarnings(parsed.errors, parsed.warnings, 0, 0);
+        setBadge("bad", "sem dados");
+        return;
+      }
+
+      const r = parseLines(txt);
+      parsed = {draws: r.draws, errors: r.errors, warnings: r.warnings};
+
+      showWarnings(parsed.errors, parsed.warnings, r.totalLines, parsed.draws.length);
+
+      if(parsed.draws.length >= 5 && parsed.errors.length === 0){
+        setBadge("ok", `validado: ${parsed.draws.length} sorteios`);
+      } else if(parsed.draws.length >= 5){
+        setBadge("warn", `validado com avisos: ${parsed.draws.length} sorteios`);
+      } else if(parsed.draws.length > 0){
+        setBadge("warn", `poucos dados: ${parsed.draws.length} sorteios`);
+      } else {
+        setBadge("bad", "nenhum sorteio válido");
+      }
+
+      btnAnalyze.disabled = parsed.draws.length === 0;
+    });
+
+    btnAnalyze.addEventListener("click", ()=>{
+      if(parsed.draws.length === 0) return;
+      const report = analyze(parsed.draws);
+      lastReport = report;
+
+      // KPIs
+      kpiDraws.textContent = report.meta.draws.toLocaleString("pt-BR");
+      kpiTotal.textContent = report.meta.totalNumbers.toLocaleString("pt-BR");
+      kpiUnique.textContent = report.meta.uniqueNumbers.toLocaleString("pt-BR");
+      kpiSumAvg.textContent = report.sums.avg.toFixed(2);
+      kpiSumMinMax.textContent = `${report.sums.min} / ${report.sums.max}`;
+      kpiChi.textContent = `${report.chiSquare.value.toFixed(2)} (df=${report.chiSquare.df})`;
+
+      // Tabelas
+      topNums.innerHTML = renderTableNumbers(report.topNumbers, report.meta.totalNumbers);
+      topPairs.innerHTML = renderTablePairs(report.topPairs);
+      parityBars.innerHTML = renderParityBars(report.parity.evenCountDist);
+
+      btnExport.disabled = false;
+      setBadge("ok", "análise concluída");
+    });
+
+    btnExport.addEventListener("click", ()=>{
+      if(!lastReport) return;
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        note: "Relatório educacional de estatística descritiva e testes simples (não preditivo).",
+        report: lastReport
+      };
+      toJSONDownload(payload, "relatorio-analise-probabilidade.json");
+    });
+
+    // estado inicial
+    setBadge("", "aguardando dados…");
+  </script>
+</body>
+</html>
